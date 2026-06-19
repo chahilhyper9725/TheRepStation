@@ -135,6 +135,17 @@
     .slot-row__mid .rr{margin-top:3px;font-size:12px;font-weight:700;color:var(--mute-3);}
     .slot-row__reps{text-align:right;font-family:var(--o8-font-display);font-size:20px;font-weight:800;line-height:1.05;font-variant-numeric:tabular-nums;}
     .slot-row__reps .ok{color:#9fe870;} .slot-row__reps .bad{color:#ff8aa8;}
+
+    /* Per-exercise breakdown (target vs achieved) inside the athlete sheet */
+    .slot-card{margin-bottom:9px;}
+    .slot-card .slot-row{margin-bottom:0;border-bottom-left-radius:0;border-bottom-right-radius:0;border-bottom:none;}
+    .slot-ex{border:1px solid var(--line);border-top:none;border-bottom-left-radius:16px;border-bottom-right-radius:16px;background:rgba(12,15,24,.5);padding:8px 14px 10px;display:flex;flex-direction:column;gap:2px;}
+    .slot-ex__item{display:grid;grid-template-columns:1fr auto;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid rgba(38,45,64,.45);}
+    .slot-ex__item:last-child{border-bottom:none;}
+    .slot-ex__name{font-size:12.5px;font-weight:700;color:var(--mute-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .slot-ex__val{font-family:var(--o8-font-display);font-size:14px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.01em;}
+    .slot-ex__val .unit{font-family:var(--o8-font-body);font-size:10px;font-weight:800;color:var(--mute-3);text-transform:uppercase;letter-spacing:.08em;margin-left:4px;}
+    .slot-ex__val.hit{color:#9fe870;} .slot-ex__val.miss{color:#fff;}
   </style>
 </head>
 <body>
@@ -197,6 +208,21 @@
       if (!isFin(r) || leadMs == null) return '';
       const d = (r.total_time_ms - leadMs) / 1000;
       return d <= 0 ? 'Time to beat' : `+${d.toFixed(2)}s off lead`;
+    }
+
+    // Per-exercise "achieved / target" breakdown for one slot. Hit target => green.
+    function exerciseBreakdown(slot) {
+      const ex = (slot.exercises || []).filter((e) => e && e.name);
+      if (!ex.length) return '';
+      return `<div class="slot-ex">${ex.map((e) => {
+        const done = Number(e.done) || 0;
+        const target = Number(e.target) || 0;
+        const hit = target > 0 && done >= target;
+        return `<div class="slot-ex__item">
+          <div class="slot-ex__name">${esc(e.name)}</div>
+          <div class="slot-ex__val ${hit ? 'hit' : 'miss'}">${done}<span style="color:var(--mute-3)"> / ${target}</span><span class="unit">${esc(e.unit || 'reps')}</span></div>
+        </div>`;
+      }).join('')}</div>`;
     }
 
     // ---- State --------------------------------------------------------------
@@ -315,13 +341,16 @@
           <div class="sheet__kpi"><b>${best != null ? fmtTime(best) : '—'}</b><span>Best time</span></div>
           <div class="sheet__kpi"><b>${totReps}</b><span>Total reps</span></div>`;
         $('shSlots').innerHTML = sl.map((s) =>
-          `<div class="slot-row">
-             <div class="slot-row__no">Slot ${s.slot_number}</div>
-             <div class="slot-row__mid">
-               <div class="sc${isFin(s) ? '' : ' dnf'}">${scoreLabel(s)}</div>
-               <div class="rr">${isFin(s) ? 'Completed' : 'Did not finish'}${s.penalty_count ? ' · ' + s.penalty_count + ' pen' : ''}</div>
+          `<div class="slot-card">
+             <div class="slot-row">
+               <div class="slot-row__no">Slot ${s.slot_number}</div>
+               <div class="slot-row__mid">
+                 <div class="sc${isFin(s) ? '' : ' dnf'}">${scoreLabel(s)}</div>
+                 <div class="rr">${isFin(s) ? 'Completed' : 'Did not finish'}${s.penalty_count ? ' · ' + s.penalty_count + ' pen' : ''}</div>
+               </div>
+               <div class="slot-row__reps">${s.reps_total}<br><span style="font-weight:700;color:var(--mute-3)">reps</span></div>
              </div>
-             <div class="slot-row__reps">${s.reps_total}<br><span style="font-weight:700;color:var(--mute-3)">reps</span></div>
+             ${exerciseBreakdown(s)}
            </div>`).join('') || '<div class="lb-empty">No slot data.</div>';
       } catch (e) {
         $('shSlots').innerHTML = `<div class="pub-err">Could not load slots: ${esc(e.message)}</div>`;

@@ -102,6 +102,11 @@
     .lb-row__name>span{display:block;margin-top:2px;font-size:11px;font-weight:700;color:var(--mute-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
     .lb-row__name>span .ok,.lb-row__name>span .bad{display:inline;}
     .lb-row__name span .ok{color:#9fe870;} .lb-row__name span .bad{color:#ff8aa8;}
+    /* Inline M/F badge before the athlete name on podium + ranking rows.
+       Scoped under #public + b so it beats the `.lb-pod__name span` block rule. */
+    #public b .gchip{display:inline-block;width:auto;vertical-align:middle;margin:0 7px 0 0;padding:1px 6px;border-radius:999px;font-size:10px;font-weight:900;letter-spacing:.04em;line-height:1.5;overflow:visible;text-overflow:clip;transform:translateY(-1px);}
+    #public b .gchip--m{color:#9be9ff;background:rgba(0,180,255,.16);border:1px solid rgba(0,180,255,.46);}
+    #public b .gchip--f{color:#ff8fcb;background:rgba(255,45,111,.18);border:1px solid rgba(255,45,111,.5);}
     .lb-row__score{font-family:var(--o8-font-display);font-size:21px;font-weight:800;letter-spacing:-.01em;font-variant-numeric:tabular-nums;color:#fff;text-align:right;}
     .lb-row.dnf .lb-row__score{color:#ff8aa8;font-size:16px;}
     .lb-empty{padding:18px;text-align:center;color:var(--mute-3);font-size:13px;font-weight:600;}
@@ -206,6 +211,11 @@
     function esc(s) {
       return String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     }
+    // Compact M/F badge markup shown next to the athlete name; '' when unset.
+    function genderChip(g) {
+      const v = g === 'M' || g === 'F' ? g : '';
+      return v ? `<span class="gchip gchip--${v.toLowerCase()}">${v}</span>` : '';
+    }
     function gapStr(r, leadMs) {
       if (!isFin(r) || leadMs == null) return '';
       const d = (r.total_time_ms - leadMs) / 1000;
@@ -245,7 +255,7 @@
       const placeLabel = place === 1 ? 'Leader' : place + (place === 2 ? 'nd' : 'rd');
       return `<article class="lb-pod lb-pod--${place}${place === 1 ? ' leader' : ''}${isFin(r) ? '' : ' dnf'}" data-key="${esc(r.athlete_key)}">
         <div class="lb-pod__top"><span class="lb-place">${placeLabel}</span><span class="lb-rankno">0${place}</span></div>
-        <div class="lb-pod__name"><b>${esc(r.athlete)}</b><span>${r.slots_count > 1 ? r.slots_count + ' slots' : 'Best run'}</span></div>
+        <div class="lb-pod__name"><b>${genderChip(r.gender)}${esc(r.athlete)}</b><span>${r.slots_count > 1 ? r.slots_count + ' slots' : 'Best run'}</span></div>
         <div class="lb-pod__score">${esc(sp.main)}${sp.sup ? `<sup>${esc(sp.sup)}</sup>` : ''}</div>
         <div class="lb-pod__foot">${r.reps_total} reps${r.slots_count > 1 ? ' · ' + r.slots_count + ' slots' : ''}</div></article>`;
     }
@@ -253,7 +263,7 @@
     function rankRow(r, leadMs) {
       return `<div class="lb-row${r.rank === 1 ? ' leader' : ''}${isFin(r) ? '' : ' dnf'}" data-key="${esc(r.athlete_key)}">
         <div class="lb-row__rank">${r.rank}</div>
-        <div class="lb-row__name"><b>${esc(r.athlete)}</b><span>${r.rank === 1 ? 'Time to beat' : esc(gapStr(r, leadMs)) || `${r.reps_total} reps`}</span></div>
+        <div class="lb-row__name"><b>${genderChip(r.gender)}${esc(r.athlete)}</b><span>${r.rank === 1 ? 'Time to beat' : esc(gapStr(r, leadMs)) || `${r.reps_total} reps`}</span></div>
         <div class="lb-row__score">${esc(scoreLabel(r))}</div></div>`;
     }
 
@@ -385,8 +395,8 @@
 
     // Offline design preview: open with ?demo=1 to render sample data (no network).
     function demoBoard() {
-      const mk = (rank, athlete, ms, slot, v, iv, fin = true, fp = 1) => ({
-        rank, athlete, athlete_key: athlete.toLowerCase().replace(/\s+/g, '_'),
+      const mk = (rank, athlete, ms, slot, v, iv, fin = true, fp = 1, gender = '') => ({
+        rank, athlete, athlete_key: athlete.toLowerCase().replace(/\s+/g, '_'), gender,
         status: fin ? 'finished' : 'dnf', total_time_ms: fin ? ms : null, final_pct: fp,
         valid_reps: v, invalid_reps: iv, reps_total: v + iv, penalty_count: iv,
         best_slot_number: slot, slots_count: 1,
@@ -395,11 +405,11 @@
         wave_id: 'demo', wave_name: 'Arena Board #2014', event_name: 'The Rep Station',
         exercises_label: 'Sled Push',
         athletes: [
-          mk(1, 'Arjun Mehta', 19840, 12, 18, 0),
-          mk(2, 'Kabir Singh', 21270, 31, 17, 1),
-          mk(3, 'Neha Kulkarni', 22510, 22, 16, 2),
-          mk(4, 'Leah Park', 24090, 8, 15, 1),
-          mk(5, 'Sam Okoro', 0, 19, 9, 3, false, 0.72),
+          mk(1, 'Arjun Mehta', 19840, 12, 18, 0, true, 1, 'M'),
+          mk(2, 'Kabir Singh', 21270, 31, 17, 1, true, 1, 'M'),
+          mk(3, 'Neha Kulkarni', 22510, 22, 16, 2, true, 1, 'F'),
+          mk(4, 'Leah Park', 24090, 8, 15, 1, true, 1, 'F'),
+          mk(5, 'Sam Okoro', 0, 19, 9, 3, false, 0.72, 'M'),
         ],
       };
     }
